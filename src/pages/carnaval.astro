@@ -1,10 +1,67 @@
 ---
+import { access } from 'node:fs/promises';
+import path from 'node:path';
 import Base from '../layouts/Base.astro';
+import { carnaval } from '../data/carnaval';
+
+const dateFormat = new Intl.DateTimeFormat('fr-FR', {
+  weekday: 'long',
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+});
+
+function formatDate(iso: string) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  if (!match) return '';
+  const [, year, month, day] = match;
+  const label = dateFormat.format(new Date(Number(year), Number(month) - 1, Number(day)));
+  return label.charAt(0).toLocaleUpperCase('fr-FR') + label.slice(1);
+}
+
+const dateLabel = formatDate(carnaval.date);
+const planHref = `/${carnaval.plan.split('/').map(encodeURIComponent).join('/')}`;
+
+let planReady = false;
+try {
+  await access(path.join(process.cwd(), 'public', carnaval.plan));
+  planReady = true;
+} catch {
+  planReady = false;
+}
 ---
 
-<Base title="Carnaval de Zillisheim" description="Le carnaval de Zillisheim.">
+<Base title="Carnaval de Zillisheim" description="Date, départ, ordre des groupes et plan du carnaval de Zillisheim.">
   <h1 class="page-title">Carnaval de Zillisheim</h1>
-  <div class="prose">
-    <p>Dates, parcours et temps forts du carnaval.</p>
-  </div>
+  {
+    (dateLabel || carnaval.departure) && (
+      <p class="lede">
+        {dateLabel && <time datetime={carnaval.date}>{dateLabel}</time>}
+        {dateLabel && carnaval.departure && ' · '}
+        {carnaval.departure && `Départ à ${carnaval.departure}`}
+      </p>
+    )
+  }
+  {
+    carnaval.groups.length > 0 && (
+      <section>
+        <h2>Ordre des groupes</h2>
+        <ol class="group-order">
+          {carnaval.groups.map((group) => (
+            <li>{group.name}</li>
+          ))}
+        </ol>
+      </section>
+    )
+  }
+  {
+    planReady && (
+      <section>
+        <h2>Plan</h2>
+        <a href={planHref}>
+          <img class="plan" src={planHref} alt="Plan du parcours" />
+        </a>
+      </section>
+    )
+  }
 </Base>

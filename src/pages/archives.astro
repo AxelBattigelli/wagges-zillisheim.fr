@@ -1,10 +1,84 @@
 ---
+import { readdir } from 'node:fs/promises';
+import path from 'node:path';
 import Base from '../layouts/Base.astro';
+import { archives } from '../data/archives';
+
+const imageExt = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif']);
+const videoExt = new Set(['.webm', '.mp4']);
+
+async function listMedia(folder: string) {
+  let names: string[];
+  try {
+    names = await readdir(path.join(process.cwd(), 'public', folder));
+  } catch {
+    return [];
+  }
+
+  return names
+    .filter((name) => {
+      const ext = path.extname(name).toLowerCase();
+      return imageExt.has(ext) || videoExt.has(ext);
+    })
+    .sort((a, b) => a.localeCompare(b, 'fr'))
+    .map((name) => {
+      const ext = path.extname(name).toLowerCase();
+      const href = `/${folder.split('/').map(encodeURIComponent).join('/')}/${encodeURIComponent(name)}`;
+      return { href, video: videoExt.has(ext) };
+    });
+}
+
+const events = await Promise.all(
+  archives.map(async (event) => ({
+    ...event,
+    files: await listMedia(event.media),
+  })),
+);
+
+const dateFormat = new Intl.DateTimeFormat('fr-FR', {
+  weekday: 'long',
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+});
+
+function formatDate(iso: string) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  if (!match) return iso;
+  const [, year, month, day] = match;
+  const label = dateFormat.format(new Date(Number(year), Number(month) - 1, Number(day)));
+  return label.charAt(0).toLocaleUpperCase('fr-FR') + label.slice(1);
+}
 ---
 
 <Base title="Archives" description="Archives du carnaval de Zillisheim.">
   <h1 class="page-title">Archives</h1>
-  <div class="prose">
-    <p>Éditions passées, photos et films.</p>
-  </div>
+  <p class="lede">Éditions passées, photos et films.</p>
+  <ul class="archive-list">
+    {
+      events.map((event) => (
+        <li>
+          <p class="archive-list__name">{event.name}</p>
+          <time class="archive-list__date" datetime={event.date}>
+            {formatDate(event.date)}
+          </time>
+          {event.files.length > 0 && (
+            <ul class="archive-gallery">
+              {event.files.map((file) => (
+                <li>
+                  {file.video ? (
+                    <video src={file.href} controls preload="metadata" />
+                  ) : (
+                    <a href={file.href}>
+                      <img src={file.href} alt={event.name} loading="lazy" />
+                    </a>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </li>
+      ))
+    }
+  </ul>
 </Base>
