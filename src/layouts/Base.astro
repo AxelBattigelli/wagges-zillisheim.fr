@@ -1,0 +1,65 @@
+---
+import '../styles/global.css';
+import { site } from '../data/site';
+
+interface Props {
+  title: string;
+  description?: string;
+}
+
+const { title, description = site.tagline } = Astro.props;
+const pageTitle = title === site.name ? title : `${title} · ${site.name}`;
+const path = Astro.url.pathname;
+const socials = site.socials.filter((item) => item.href);
+---
+
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <title>{pageTitle}</title>
+    <link rel="icon" href="/logo.svg" type="image/svg+xml" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="site-header__bar">
+        <a class="logo" href="/">
+          <img src="/logo.svg" alt="" width="44" height="44" />
+          <span class="logo__name">{site.name}</span>
+        </a>
+        <nav class="nav" aria-label="Principal">
+          {
+            site.nav.map((item) => (
+              <a href={item.href} aria-current={path === item.href ? 'page' : undefined}>
+                {item.label}
+              </a>
+            ))
+          }
+        </nav>
+      </div>
+    </header>
+    <main>
+      <slot />
+    </main>
+    <footer class="site-footer">
+      <div class="site-footer__inner">
+        <p class="site-footer__name">{site.name}</p>
+        {
+          socials.length > 0 && (
+            <ul class="socials">
+              {socials.map((item) => (
+                <li>
+                  <a href={item.href} rel="me noopener noreferrer" target="_blank">
+                    {item.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          )
+        }
+      </div>
+    </footer>
+  </body>
+</html>
